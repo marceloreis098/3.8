@@ -9,6 +9,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
+const { GoogleGenAI } = require("@google/genai");
 
 const app = express();
 app.use(cors());
@@ -21,6 +22,8 @@ const DB_HOST = process.env.DB_HOST;
 const DB_USER = process.env.DB_USER;
 const DB_PASSWORD = process.env.DB_PASSWORD;
 const DB_DATABASE = process.env.DB_DATABASE;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
 
 const BACKUP_DIR = './backups';
 if (!fs.existsSync(BACKUP_DIR)) {
@@ -182,6 +185,51 @@ app.get('/api/database/backup-status', (req, res) => { const backupFile = path.j
 app.post('/api/database/backup', isAdmin, (req, res) => { const backupFile = path.join(BACKUP_DIR, `inventario_pro_backup.sql.gz`); const command = `mysqldump -h ${DB_HOST} -u ${DB_USER} -p'${DB_PASSWORD}' ${DB_DATABASE} | gzip > ${backupFile}`; exec(command, (error, stdout, stderr) => { if (error) { console.error(`Backup error: ${error.message}`); return res.status(500).json({ success: false, message: 'Falha ao criar backup.' }); } logAction(req.body.username, 'UPDATE', 'DATABASE', null, 'Database backup created'); res.json({ success: true, message: 'Backup do banco de dados criado com sucesso.', backupTimestamp: new Date().toISOString() }); }); });
 app.post('/api/database/restore', isAdmin, (req, res) => { const backupFile = path.join(BACKUP_DIR, 'inventario_pro_backup.sql.gz'); if (!fs.existsSync(backupFile)) { return res.status(404).json({ success: false, message: 'Nenhum arquivo de backup encontrado.' }); } const command = `gunzip < ${backupFile} | mysql -h ${DB_HOST} -u ${DB_USER} -p'${DB_PASSWORD}' ${DB_DATABASE}`; exec(command, (error, stdout, stderr) => { if (error) { console.error(`Restore error: ${error.message}`); return res.status(500).json({ success: false, message: 'Falha ao restaurar o backup.' }); } logAction(req.body.username, 'UPDATE', 'DATABASE', null, 'Database restored from backup'); res.json({ success: true, message: 'Banco de dados restaurado com sucesso.' }); }); });
 app.post('/api/database/clear', isAdmin, async (req, res) => { const connection = await db.promise().getConnection(); try { await connection.beginTransaction(); await connection.query('SET FOREIGN_KEY_CHECKS = 0;'); const tables = ['equipment_history', 'licenses', 'equipment', 'audit_log', 'app_config', 'migrations']; for(const table of tables){ await connection.query(`TRUNCATE TABLE ${table}`); } await connection.query('DELETE FROM users WHERE username != ?', ['admin']); await connection.query('SET FOREIGN_KEY_CHECKS = 1;'); await connection.commit(); await runMigrations(); logAction(req.body.username, 'DELETE', 'DATABASE', 'ALL', 'Database cleared and reset to initial state'); res.json({ success: true, message: 'Banco de dados zerado com sucesso. Apenas o usuário admin foi mantido.' }); } catch (err) { await connection.rollback(); console.error("Database clear error:", err); res.status(500).json({ success: false, message: `Erro ao zerar o banco de dados: ${err.message}` }); } finally { connection.release(); } });
+
+// --- Gemini API Endpoints ---
+app.get('/api/gemini-status', (req, res) => {
+    res.json({ hasApiKey: !!GEMINI_API_KEY });
+});
+
+app.post('/api/generate-report', async (req, res) => {
+    if (!GEMINI_API_KEY) {
+        return res.status(500).json({ message: "API Key do Gemini não configurada no servidor." });
+    }
+    const { prompt, equipment, licenses } = req.body;
+
+    try {
+        const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
+        
+        // Fetch current data for context
+        const [equipmentData] = await db.promise().query("SELECT equipamento, serial, usuarioAtual, status, tipo, brand, model FROM equipment");
+        const [licensesData] = await db.promise().query("SELECT produto, usuario, dataExpiracao FROM licenses");
+
+        const contextPrompt = `
+            Você é um assistente de gerenciamento de inventário. Com base nos dados atuais do sistema, responda à pergunta do usuário.
+            Seja conciso e direto. Formate sua resposta usando markdown.
+
+            Dados de Equipamentos (em formato JSON):
+            ${JSON.stringify(equipmentData, null, 2)}
+
+            Dados de Licenças (em formato JSON):
+            ${JSON.stringify(licensesData, null, 2)}
+
+            ---
+            Pergunta do Usuário: "${prompt}"
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: [{ parts: [{ text: contextPrompt }] }],
+        });
+
+        res.json({ report: response.text });
+    } catch (error) {
+        console.error('Gemini API error:', error);
+        res.status(500).json({ message: "Erro ao se comunicar com a API do Gemini." });
+    }
+});
+
 
 // --- SERVER STARTUP ---
 const startServer = async () => {

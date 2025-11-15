@@ -199,3 +199,15 @@ export const restoreDatabase = (username: string): Promise<{ success: boolean; m
 export const clearDatabase = (username: string): Promise<{ success: boolean; message: string }> => {
     return apiRequest('/database/clear', { method: 'POST', body: JSON.stringify({ username }) });
 };
+
+// Gemini API Endpoints
+export const checkGeminiStatus = (): Promise<{ hasApiKey: boolean }> => {
+    return apiRequest('/gemini-status');
+};
+
+export const generateAiReport = (prompt: string, equipment: Equipment[], licenses: License[]): Promise<{ report: string }> => {
+    return apiRequest('/generate-report', {
+        method: 'POST',
+        body: JSON.stringify({ prompt, equipment, licenses }),
+    });
+};

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, AppSettings, License } from '../types';
 import Icon from './common/Icon';
 import { getSettings, saveSettings, checkApiStatus, checkDatabaseBackupStatus, backupDatabase, restoreDatabase, clearDatabase, getLicenseTotals, getLicenses } from '../services/apiService';
+import { checkGeminiStatus } from '../services/geminiService';
 import DataConsolidation from './DataConsolidation';
 import LicenseImport from './LicenseImport'; // Novo import
 import PeriodicUpdate from './PeriodicUpdate';
@@ -118,8 +119,9 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
     const [isSaving, setIsSaving] = useState(false);
     const [backupStatus, setBackupStatus] = useState<{ hasBackup: boolean; backupTimestamp?: string } | null>(null);
     const [isDatabaseActionLoading, setIsDatabaseActionLoading] = useState(false);
-    const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'security' | 'database' | 'import' | 'termo'>('general');
+    const [activeSettingsTab, setActiveSettingsTab] = useState<'general' | 'security' | 'database' | 'import' | 'termo' | 'gemini'>('general');
     const [productNames, setProductNames] = useState<string[]>([]);
+    const [hasGeminiApiKey, setHasGeminiApiKey] = useState(false);
 
 
     const fetchAllData = useCallback(async () => {
@@ -129,11 +131,12 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
             setApiStatus(status);
 
             if (currentUser.role === UserRole.Admin) {
-                const [data, dbBackupStatus, totals, licenses] = await Promise.all([
+                const [data, dbBackupStatus, totals, licenses, geminiStatus] = await Promise.all([
                     getSettings(),
                     checkDatabaseBackupStatus(),
                     getLicenseTotals(),
-                    getLicenses(currentUser)
+                    getLicenses(currentUser),
+                    checkGeminiStatus()
                 ]);
 
                 setSettings({
@@ -146,6 +149,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                 setTermoEntregaTemplate(data.termo_entrega_template || DEFAULT_ENTREGA_TEMPLATE);
                 setTermoDevolucaoTemplate(data.termo_devolucao_template || DEFAULT_DEVOLUCAO_TEMPLATE);
                 setBackupStatus(dbBackupStatus);
+                setHasGeminiApiKey(geminiStatus.hasApiKey);
 
                 const productNamesFromTotals = Object.keys(totals);
                 const productNamesFromLicenses = [...new Set(licenses.map(l => l.produto))];
@@ -305,6 +309,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
     const settingsTabs = [
         { id: 'general', label: 'Geral', icon: 'Settings' },
         { id: 'security', label: 'Segurança', icon: 'ShieldCheck' },
+        { id: 'gemini', label: 'Integração Gemini', icon: 'Sparkles', adminOnly: true },
         { id: 'termo', label: 'Termos', icon: 'FileText', adminOnly: true },
         { id: 'database', label: 'Banco de Dados', icon: 'HardDrive', adminOnly: true },
         { id: 'import', label: 'Importações', icon: 'UploadCloud', adminOnly: true },
@@ -504,6 +509,33 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                             </div>
                         </div>
                     )}
+                    
+                    {activeSettingsTab === 'gemini' && currentUser.role === UserRole.Admin && (
+                         <div className="p-6 bg-gray-50 dark:bg-dark-bg rounded-lg border dark:border-dark-border">
+                            <h3 className="text-lg font-bold text-brand-secondary dark:text-dark-text-primary mb-4 flex items-center gap-2">
+                                <Icon name="Sparkles" size={20} />
+                                Integração com Google Gemini
+                            </h3>
+                            <div className="flex items-center gap-4 p-4 bg-white dark:bg-dark-card rounded-md border dark:border-dark-border">
+                                <span className="font-medium">Status da Chave de API:</span>
+                                {hasGeminiApiKey ? (
+                                     <span className="text-xs font-semibold bg-green-200 text-green-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                        <Icon name="CheckCircle" size={14} /> Configurada
+                                    </span>
+                                ) : (
+                                     <span className="text-xs font-semibold bg-red-200 text-red-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                                        <Icon name="XCircle" size={14} /> Não Encontrada
+                                    </span>
+                                )}
+                            </div>
+                             <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 text-blue-800 dark:text-blue-200 text-sm">
+                                <h4 className="font-bold mb-2">Como configurar:</h4>
+                                <p>Para habilitar o Assistente de IA, adicione sua chave da API do Google Gemini no arquivo <code className="bg-blue-100 dark:bg-blue-800/50 px-1 py-0.5 rounded">.env</code> na pasta <code className="bg-blue-100 dark:bg-blue-800/50 px-1 py-0.5 rounded">inventario-api</code>.</p>
+                                <p className="mt-2">Adicione a seguinte linha e reinicie a API:</p>
+                                <code className="block mt-2 p-2 bg-gray-800 text-white rounded text-xs">GEMINI_API_KEY=SUA_CHAVE_DE_API_AQUI</code>
+                            </div>
+                        </div>
+                    )}
 
                     {activeSettingsTab === 'termo' && currentUser.role === UserRole.Admin && (
                         <div className="space-y-8 animate-fade-in">
@@ -620,7 +652,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                         </div>
                     )}
 
-                    {['general', 'security', 'termo'].includes(activeSettingsTab) && currentUser.role === UserRole.Admin && (
+                    {['general', 'security', 'termo', 'gemini'].includes(activeSettingsTab) && currentUser.role === UserRole.Admin && (
                         <div className="flex justify-end pt-4 border-t dark:border-dark-border">
                             <button type="submit" disabled={isSaving} className="bg-brand-primary text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 flex items-center gap-2">
                                 <Icon name="Save" size={18} />

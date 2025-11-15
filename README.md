@@ -87,6 +87,11 @@ Siga estes passos para configurar e executar a aplicação.
     API_PORT=3001
     BCRYPT_SALT_ROUNDS=10
     ```
+4.  **Configuração da API do Gemini (Opcional):**
+    Para habilitar o assistente de IA, adicione sua chave de API do Google Gemini ao arquivo `.env` na pasta `inventario-api/`. Adicione a seguinte linha:
+    ```
+    GEMINI_API_KEY=SUA_CHAVE_DE_API_AQUI
+    ```
 
 ### Passo 3: Configuração do Frontend
 
