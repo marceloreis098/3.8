@@ -12,8 +12,10 @@ const handleResponse = async (response: Response) => {
 };
 
 const getApiBaseUrl = () => {
-    // Connect directly to the backend API on port 3001
-    return `http://${window.location.hostname}:3001/api`;
+    // Use a relative path for the API.
+    // This allows a proxy (like Vite's dev server or Nginx in production)
+    // to seamlessly route API requests.
+    return '/api';
 };
 
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -27,14 +29,14 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
 
 export const checkApiStatus = async (): Promise<{ ok: boolean, message?: string }> => {
     try {
-        const response = await fetch(getApiBaseUrl());
+        const response = await fetch(`${getApiBaseUrl()}/`);
         if (!response.ok) {
-            throw new Error(`O servidor respondeu com o status: ${response.status}`);
+            throw new Error(`O servidor da API respondeu com o status: ${response.status}`);
         }
         await response.json();
         return { ok: true };
     } catch (error: any) {
-        return { ok: false, message: 'Falha de conexão com a API. Verifique se o servidor backend está em execução na porta 3001 e se a porta não está bloqueada por um firewall.' };
+        return { ok: false, message: 'Falha de conexão com a API. Verifique se o servidor backend (API) está em execução e se o proxy está configurado corretamente.' };
     }
 };
 
