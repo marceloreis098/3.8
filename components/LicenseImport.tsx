@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { User, License } from '../types';
 import Icon from './common/Icon';
@@ -162,7 +163,8 @@ const LicenseImport: React.FC<LicenseImportProps> = ({ currentUser, productNames
                         disabled={isSaving || !selectedProduct || !csvFile}
                         className="w-full bg-brand-secondary hover:bg-brand-dark text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2"
                     >
-                        {isSaving ? <Icon name="LoaderCircle" className="animate-spin" /> : <Icon name="UploadCloud" />}
+                        {/* FIX: Replaced 'UploadCloud' with 'Upload' to resolve TypeScript error. */}
+                        {isSaving ? <Icon name="LoaderCircle" className="animate-spin" /> : <Icon name="Upload" />}
                         {isSaving ? 'Importando...' : 'Importar Licenças (CSV)'}
                     </button>
                     <p className="text-xs text-center mt-2 text-gray-500 dark:text-dark-text-secondary">Isto substituirá todas as licenças do produto selecionado.</p>

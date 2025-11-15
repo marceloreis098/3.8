@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
@@ -7,7 +8,8 @@ import LicenseControl from './components/LicenseControl';
 import UserManagement from './components/UserManagement';
 import Settings from './components/Settings';
 import AuditLog from './components/AuditLog';
-import Login from './components/Login';
+// FIX: Aliased the import to avoid a potential naming conflict or module resolution error.
+import LoginComponent from './components/Login';
 import TwoFactorAuth from './components/TwoFactorAuth';
 import TwoFactorSetup from './components/TwoFactorSetup'; // Novo componente
 import AIAssistantWidget from './components/AIAssistantWidget';
@@ -155,7 +157,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login onLoginSuccess={handleLoginSuccess} isSsoEnabled={isSsoEnabled} />;
+    return <LoginComponent onLoginSuccess={handleLoginSuccess} isSsoEnabled={isSsoEnabled} />;
   }
 
   return (

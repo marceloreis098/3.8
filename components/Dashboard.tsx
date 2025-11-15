@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, lazy, Suspense, useMemo, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, Cell, CartesianGrid } from 'recharts';
 import { getEquipment, getLicenses, getSettings } from '../services/apiService';
@@ -44,7 +45,8 @@ const InventoryStatusPanel: React.FC<{ settings: Partial<AppSettings>; setActive
     return (
         <div className={`p-4 rounded-lg shadow-md flex flex-col sm:flex-row justify-between items-center gap-4 ${isUpdatePending ? 'bg-orange-100 dark:bg-orange-900/30 border-l-4 border-orange-500 text-orange-800 dark:text-orange-200' : 'bg-green-100 dark:bg-green-900/30 border-l-4 border-green-500 text-green-800 dark:text-green-200'}`}>
              <div className="flex items-center gap-3">
-                <Icon name={isUpdatePending ? "History" : "CheckCircle"} size={24} />
+                {/* FIX: Replaced icon names with valid alternatives to resolve TypeScript error. */}
+                <Icon name={isUpdatePending ? "Clock" : "Check"} size={24} />
                 <div>
                     <h4 className="font-bold">Status da Atualização do Inventário</h4>
                     {isValidDate ? (

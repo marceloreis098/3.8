@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { getAuditLog } from '../services/apiService';
 import { AuditLogEntry } from '../types';
@@ -43,7 +44,8 @@ const AuditLog: React.FC = () => {
             case 'LICENSE': return 'ScrollText';
             case 'USER': return 'User';
             // FIX: Corrected icon name from 'FileQuestionMark' to 'FileQuestion' which is a valid lucide-react icon.
-            default: return 'FileQuestion';
+            // Changed to 'FileText' to resolve persistent type error.
+            default: return 'FileText';
         }
     };
 

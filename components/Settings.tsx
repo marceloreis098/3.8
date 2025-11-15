@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, UserRole, AppSettings, License } from '../types';
 import Icon from './common/Icon';
@@ -312,7 +313,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
         { id: 'gemini', label: 'Integração Gemini', icon: 'Sparkles', adminOnly: true },
         { id: 'termo', label: 'Termos', icon: 'FileText', adminOnly: true },
         { id: 'database', label: 'Banco de Dados', icon: 'HardDrive', adminOnly: true },
-        { id: 'import', label: 'Importações', icon: 'UploadCloud', adminOnly: true },
+        { id: 'import', label: 'Importações', icon: 'Upload', adminOnly: true },
     ];
 
     if (isLoading) {
@@ -361,7 +362,8 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                             <p className="text-gray-500">Verificando status...</p>
                         ) : apiStatus.ok ? (
                             <div className="p-3 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-md text-sm flex items-center gap-2">
-                                <Icon name="CheckCircle" size={18} />
+                                {/* FIX: Replaced 'CheckCircle' with 'Check' to resolve TypeScript error. */}
+                                <Icon name="Check" size={18} />
                                 <span>Conexão com a API estabelecida com sucesso.</span>
                             </div>
                         ) : (
@@ -431,7 +433,8 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                                             <p className="text-sm text-gray-500 dark:text-dark-text-secondary mt-1 mb-3">Faça o upload do arquivo XML de metadados do seu provedor de identidade para preencher os campos automaticamente.</p>
                                             <input type="file" accept=".xml, text/xml" onChange={handleMetadataUpload} id="metadata-upload" className="hidden" />
                                             <label htmlFor="metadata-upload" className="cursor-pointer inline-flex items-center gap-2 bg-brand-secondary text-white px-4 py-2 rounded-lg hover:bg-gray-700">
-                                                <Icon name="UploadCloud" size={18} /> Carregar Arquivo XML
+                                                {/* FIX: Replaced 'UploadCloud' with 'Upload' to resolve TypeScript error. */}
+                                                <Icon name="Upload" size={18} /> Carregar Arquivo XML
                                             </label>
                                         </div>
     
@@ -520,11 +523,13 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                                 <span className="font-medium">Status da Chave de API:</span>
                                 {hasGeminiApiKey ? (
                                      <span className="text-xs font-semibold bg-green-200 text-green-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                                        <Icon name="CheckCircle" size={14} /> Configurada
+                                        {/* FIX: Replaced 'CheckCircle' with 'Check' to resolve TypeScript error. */}
+                                        <Icon name="Check" size={14} /> Configurada
                                     </span>
                                 ) : (
                                      <span className="text-xs font-semibold bg-red-200 text-red-800 px-2.5 py-1 rounded-full flex items-center gap-1.5">
-                                        <Icon name="XCircle" size={14} /> Não Encontrada
+                                        {/* FIX: Replaced 'XCircle' with 'X' to resolve TypeScript error. */}
+                                        <Icon name="X" size={14} /> Não Encontrada
                                     </span>
                                 )}
                             </div>
@@ -594,7 +599,7 @@ const Settings: React.FC<SettingsProps> = ({ currentUser }) => {
                                 <p className="mb-2">Gerencie o banco de dados da aplicação. Recomenda-se fazer backup regularmente.</p>
                                 {backupStatus?.hasBackup ? (
                                     <p className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
-                                        <Icon name="CheckCircle" size={16} /> Último backup: {new Date(backupStatus.backupTimestamp!).toLocaleString()}
+                                        <Icon name="Check" size={16} /> Último backup: {new Date(backupStatus.backupTimestamp!).toLocaleString()}
                                     </p>
                                 ) : (
                                     <p className="flex items-center gap-2 text-red-700 dark:text-red-300 font-medium">
