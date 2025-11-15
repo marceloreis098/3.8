@@ -1,19 +1,15 @@
 # Gerenciador de Inventário Pro
 
-Este é um guia completo para a instalação e configuração do sistema Gerenciador de Inventário Pro em um ambiente de produção interno. A aplicação utiliza uma arquitetura full-stack com um frontend em React, um backend em Node.js (Express) e um banco de dados MariaDB rodando em um servidor Ubuntu.
+Este é um guia completo para a instalação e configuração do sistema Gerenciador de Inventário Pro em um ambiente de produção interno. A aplicação utiliza uma arquitetura full-stack com um frontend em React, um backend em Node.js (Express), um banco de dados MariaDB e **Nginx como reverse proxy** em um servidor Ubuntu.
 
-## Arquitetura
+## Arquitetura com Reverse Proxy (Nginx)
 
--   **Backend (API):** Roda na porta **3001** e se comunica com o banco de dados.
--   **Frontend:** Roda na porta **3000** e faz requisições para a API na porta 3001.
+-   **Nginx:** Atua como o ponto de entrada principal na porta **80** (HTTP). Ele serve os arquivos do frontend e encaminha as requisições de API para o backend.
+-   **Backend (API):** Roda internamente na porta **3001** e se comunica com o banco de dados. Não é acessível externamente.
+-   **Frontend:** Roda internamente na porta **3000**. O Nginx serve os arquivos estáticos compilados da pasta `dist`.
 -   **Banco de Dados:** MariaDB rodando localmente.
 
-A estrutura de diretórios do projeto é a seguinte:
-```
-/var/www/Inventario/
-├── inventario-api/         <-- Backend (API Node.js)
-└── ...                     <-- Frontend (React)
-```
+Esta abordagem resolve problemas de CORS, simplifica a configuração de firewall e aumenta a segurança.
 
 ---
 
@@ -58,7 +54,7 @@ Siga estes passos para configurar e executar a aplicação.
     FLUSH PRIVILEGES;
     EXIT;
     ```
-    
+
 ### Passo 2: Configuração do Backend (API)
 
 1.  **Instale o Node.js:**
@@ -67,10 +63,11 @@ Siga estes passos para configurar e executar a aplicação.
     sudo apt-get install -y nodejs
     ```
 
-2.  **Instale as Dependências da API:**
+2.  **Instale as Dependências da API e o `pm2`:**
     ```bash
     cd /var/www/Inventario/inventario-api
     npm install
+    sudo npm install -g pm2
     ```
 
 3.  **Crie o Arquivo de Variáveis de Ambiente (`.env`):**
@@ -95,64 +92,92 @@ Siga estes passos para configurar e executar a aplicação.
 
 ### Passo 3: Configuração do Frontend
 
-1.  **Instale `serve` e `pm2` globalmente:**
-    ```bash
-    sudo npm install -g serve pm2
-    ```
-
-2.  **Instale as Dependências do Frontend:**
+1.  **Instale as Dependências e Compile para Produção:**
     ```bash
     cd /var/www/Inventario
     npm install 
-    ```
-
-3.  **Compile a Aplicação para Produção:**
-    Isso cria uma pasta `dist` com a versão otimizada do site.
-    ```bash
     npm run build
     ```
+    Isso cria uma pasta `dist` com a versão otimizada do site.
 
-### Passo 4: Configuração do Firewall (UFW)
+### Passo 4: Configuração do Reverse Proxy (Nginx)
+
+1.  **Instale o Nginx:**
+    ```bash
+    sudo apt install nginx
+    ```
+
+2.  **Crie um Arquivo de Configuração para a Aplicação:**
+    ```bash
+    sudo nano /etc/nginx/sites-available/inventario
+    ```
+
+3.  **Cole a Configuração Abaixo:**
+    Este bloco de configuração diz ao Nginx para servir os arquivos do frontend e para redirecionar qualquer requisição que comece com `/api/` para o seu backend na porta 3001.
+
+    ```nginx
+    server {
+        listen 80;
+        server_name <ip-do-servidor-ou-dominio.com>; # Substitua pelo seu IP ou domínio
+
+        root /var/www/Inventario/dist;
+        index index.html;
+
+        location / {
+            try_files $uri /index.html;
+        }
+
+        location /api/ {
+            proxy_pass http://localhost:3001;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+    ```
+
+4.  **Ative a Nova Configuração:**
+    ```bash
+    sudo ln -s /etc/nginx/sites-available/inventario /etc/nginx/sites-enabled/
+    sudo nginx -t  # Testa a sintaxe da configuração
+    sudo systemctl restart nginx
+    ```
+
+### Passo 5: Configuração do Firewall (UFW)
 
 1.  **Adicione as Regras e Habilite:**
-    Libere as portas para SSH, frontend (3000) e backend (3001).
+    Libere as portas para SSH e para o Nginx (que usa as portas 80 para HTTP e 443 para HTTPS).
     ```bash
     sudo ufw allow ssh
-    sudo ufw allow 3000/tcp
-    sudo ufw allow 3001/tcp
+    sudo ufw allow 'Nginx Full'
     sudo ufw enable
     ```
 
-### Passo 5: Executando a Aplicação com PM2
-
-`pm2` irá garantir que a API e o frontend rodem continuamente em segundo plano.
+### Passo 6: Executando a Aplicação com PM2
 
 1.  **Inicie a API na porta 3001:**
     ```bash
     cd /var/www/Inventario/inventario-api
     pm2 start server.js --name inventario-api
     ```
+    *O frontend não precisa mais ser iniciado com pm2, pois o Nginx serve os arquivos estáticos diretamente.*
 
-2.  **Inicie o Frontend na porta 3000:**
-    ```bash
-    cd /var/www/Inventario
-    pm2 start serve --name inventario-frontend -- -s dist -l 3000
-    ```
-
-3.  **Configure o PM2 para Iniciar com o Servidor:**
+2.  **Configure o PM2 para Iniciar com o Servidor:**
     ```bash
     pm2 startup
     # Execute o comando que o pm2 fornecer na saída
     ```
 
-4.  **Salve a Configuração de Processos:**
+3.  **Salve a Configuração de Processos:**
     ```bash
     pm2 save
     ```
 
-### Passo 6: Acesso à Aplicação
+### Passo 7: Acesso à Aplicação
 
-Abra o navegador e acesse o endereço IP do seu servidor, especificando a porta do frontend **3000**: `http://<ip-do-servidor>:3000`.
+Abra o navegador e acesse o endereço IP do seu servidor (ou o domínio configurado) **sem especificar a porta**: `http://<ip-do-servidor>`.
 
 ---
 
@@ -177,8 +202,8 @@ Para atualizar a aplicação com novas modificações do repositório:
     ```bash
     npm run build
     ```
-5.  **Reinicie os processos do `pm2`:**
+5.  **Reinicie o processo da API com `pm2`:**
     ```bash
     pm2 restart inventario-api
-    pm2 restart inventario-frontend
     ```
+    *Não é necessário reiniciar o Nginx, pois ele servirá os novos arquivos da pasta `dist` automaticamente.*

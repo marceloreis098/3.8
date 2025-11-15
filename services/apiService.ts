@@ -12,8 +12,8 @@ const handleResponse = async (response: Response) => {
 };
 
 const getApiBaseUrl = () => {
-    // Explicitly point to the backend's port.
-    return `http://${window.location.hostname}:3001/api`;
+    // Use um caminho relativo. O reverse proxy (Nginx) irá direcionar as chamadas /api para o backend.
+    return '/api';
 };
 
 const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
@@ -34,7 +34,7 @@ export const checkApiStatus = async (): Promise<{ ok: boolean, message?: string 
         await response.json();
         return { ok: true };
     } catch (error: any) {
-        return { ok: false, message: 'Falha ao conectar com a API. Verifique se o servidor backend está em execução na porta 3001 e se não há firewalls bloqueando a conexão.' };
+        return { ok: false, message: 'Falha de conexão com a API. Verifique a configuração do servidor (reverse proxy) e se o backend está em execução.' };
     }
 };
 
